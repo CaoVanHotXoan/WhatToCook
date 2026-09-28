@@ -135,7 +135,7 @@ export default function HomePage() {
 
   // --- STATE NHẬP NGUYÊN LIỆU TỦ LẠNH (Dạng Tag Input) ---
   const [ingredientInput, setIngredientInput] = useState<string>('');
-  const [fridgeTags, setFridgeTags] = useState<string[]>(['thịt ba rọi', 'cá quả', 'rau muống']);
+  const [fridgeTags, setFridgeTags] = useState<string[]>([]);
   const [synonymMatchReport, setSynonymMatchReport] = useState<string | null>(null);
 
   // --- STATE DANH MỤC & CHẾ ĐỘ GỢI Ý ---
@@ -738,13 +738,13 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* NÚT BẤM CHÍNH: [🍳 GỢI Ý MÓN NGAY] (So sánh từ đồng nghĩa & quét món ăn) */}
+                  {/* NÚT BẤM CHÍNH: Gợi Ý Món Ăn */}
                   <button
                     onClick={() => handleTriggerSuggestWithTags(fridgeTags)}
                     className="w-full py-4 bg-gradient-to-r from-orange-500 via-amber-500 to-emerald-600 hover:from-orange-600 hover:via-amber-600 hover:to-emerald-700 text-white text-base sm:text-lg font-black rounded-2xl shadow-xl shadow-orange-500/30 flex items-center justify-center gap-3 transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
                   >
                     <ChefHat className="w-6 h-6 animate-pulse" />
-                    <span>🍳 GỢI Ý MÓN NGAY (SO KHỚP TỪ ĐỒNG NGHĨA & NGUYÊN LIỆU)</span>
+                    <span>Gợi Ý Món Ăn</span>
                     <ArrowRight className="w-5 h-5" />
                   </button>
                 </div>
@@ -762,11 +762,11 @@ export default function HomePage() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent"></div>
 
-                    <div className="absolute bottom-5 left-5 right-5 text-white">
-                      <span className="inline-block px-2.5 py-1 bg-emerald-500/90 backdrop-blur-md rounded-lg text-[11px] font-bold uppercase tracking-wider mb-1.5">
+                    <div className="absolute bottom-14 sm:bottom-16 left-5 right-5 text-white">
+                      <span className="inline-block px-2.5 py-1 bg-emerald-500/90 backdrop-blur-md rounded-lg text-[11px] font-bold uppercase tracking-wider mb-1.5 shadow-sm">
                         Smart Kitchen Suggestion
                       </span>
-                      <h3 className="text-xl font-bold leading-snug">
+                      <h3 className="text-lg sm:text-xl font-bold leading-snug drop-shadow-md">
                         Đừng vội đi chợ khi tủ lạnh nhà bạn vẫn còn nguyên liệu!
                       </h3>
                     </div>
