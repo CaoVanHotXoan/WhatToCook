@@ -273,7 +273,8 @@ class RecipeController {
             }
 
             // Phân quyền: Chỉ chủ sở hữu hoặc Quản trị viên mới được sửa
-            if (existing.MaNguoiDung !== currentUser.MaNguoiDung && currentUser.TenVaiTro !== 'QuanTriVien') {
+            const isAdm = currentUser.TenVaiTro === 'Admin' || currentUser.TenVaiTro === 'QuanTriVien';
+            if (existing.MaNguoiDung !== currentUser.MaNguoiDung && !isAdm) {
                 return sendError(res, 'Bạn không có quyền chỉnh sửa món ăn này.', 403);
             }
 
@@ -378,7 +379,8 @@ class RecipeController {
                 return sendError(res, 'Món ăn không tồn tại.', 404);
             }
 
-            if (existing.MaNguoiDung !== currentUser.MaNguoiDung && currentUser.TenVaiTro !== 'QuanTriVien') {
+            const isAdm = currentUser.TenVaiTro === 'Admin' || currentUser.TenVaiTro === 'QuanTriVien';
+            if (existing.MaNguoiDung !== currentUser.MaNguoiDung && !isAdm) {
                 return sendError(res, 'Bạn không có quyền xóa món ăn này.', 403);
             }
 

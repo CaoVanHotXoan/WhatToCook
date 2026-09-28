@@ -30,6 +30,9 @@ import {
   ArrowRight,
   ShieldCheck,
   LogIn,
+  LogOut,
+  ChevronDown,
+  Settings,
   Layers,
   RotateCcw,
   Home,
@@ -40,8 +43,11 @@ import {
   CheckCircle2,
   Info
 } from 'lucide-react';
+import { AuthModal } from '../components/modals/AuthModal';
+import { authApi } from '../services/api';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
 
 // Ảnh mặc định thay thế nếu link ảnh món ăn bị lỗi
 const FALLBACK_FOOD_IMG = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80';
@@ -147,16 +153,51 @@ export default function HomePage() {
   const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
   const [isSavedDrawerOpen, setIsSavedDrawerOpen] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState<boolean>(false); // Menu dropdown khi đã đăng nhập
   const [savedRecipeIds, setSavedRecipeIds] = useState<number[]>([]);
 
-  // Mock User Session
-  const [currentUser, setCurrentUser] = useState<{ id: number; name: string; email: string; avatar: string; role: string } | null>({
-    id: 2,
-    name: 'Cao Văn Hột Xoàn (Admin)',
-    email: 'xoan@whattocook.com',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
-    role: 'QuanTriVien'
-  });
+  /**
+   * ==================================================================================================
+   * QUẢN LÝ PHIÊN ĐĂNG NHẬP NGƯỜI DÙNG (USER SESSION)
+   * - Mặc định là `null` (Chưa đăng nhập) -> Giao diện sẽ hiển thị nút "Đăng nhập"
+   * - Tự động đọc thông tin từ localStorage nếu người dùng đã đăng nhập trước đó
+   * ==================================================================================================
+   */
+  const [currentUser, setCurrentUser] = useState<{
+    id: number;
+    name: string;
+    email: string;
+    avatar: string;
+    role: string;
+  } | null>(null);
+
+  // Khôi phục thông tin đăng nhập từ localStorage khi load trang
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedUserStr = localStorage.getItem('whattocook_user');
+      if (savedUserStr) {
+        try {
+          const u = JSON.parse(savedUserStr);
+          setCurrentUser({
+            id: u.MaNguoiDung || u.id || 1,
+            name: u.TenDangNhap || u.name || 'Người dùng',
+            email: u.Email || u.email || '',
+            avatar: u.AnhDaiDien || u.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
+            role: u.TenVaiTro || u.role || 'NguoiDung'
+          });
+        } catch (e) {
+          console.error('Lỗi khi đọc thông tin user từ localStorage:', e);
+        }
+      }
+    }
+  }, []);
+
+  // Hàm xử lý Đăng xuất
+  const handleLogout = () => {
+    authApi.logout();
+    setCurrentUser(null);
+    setIsUserMenuOpen(false);
+  };
 
   // Tự động tắt Toast thông báo sau 4 giây
   useEffect(() => {
@@ -515,25 +556,103 @@ export default function HomePage() {
               )}
             </button>
 
+            {/* NÚT ĐĂNG NHẬP (Khi chưa đăng nhập) HOẶC HỒ SƠ NGƯỜI DÙNG (Khi đã đăng nhập) */}
             {currentUser ? (
-              <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
-                <img
-                  src={currentUser.avatar}
-                  alt={currentUser.name}
-                  className="w-9 h-9 rounded-full object-cover ring-2 ring-orange-500/30"
-                />
-                <div className="hidden md:flex flex-col text-left">
-                  <span className="text-xs font-bold text-slate-800 line-clamp-1">{currentUser.name}</span>
-                  <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    Đã đăng nhập
-                  </span>
-                </div>
+              <div className="relative pl-2 border-l border-slate-200">
+                {/* Nút bấm mở menu người dùng */}
+                <button
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="flex items-center gap-2.5 p-1 rounded-2xl hover:bg-slate-100 transition-colors cursor-pointer group text-left"
+                  title="Thông tin tài khoản"
+                >
+                  <img
+                    src={currentUser.avatar}
+                    alt={currentUser.name}
+                    className="w-9 h-9 rounded-full object-cover ring-2 ring-emerald-500/30 group-hover:ring-emerald-500 transition-all"
+                  />
+                  <div className="hidden md:flex flex-col">
+                    <span className="text-xs font-bold text-slate-800 line-clamp-1 group-hover:text-emerald-600 transition-colors">
+                      {currentUser.name}
+                    </span>
+                    <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      {(currentUser.role === 'Admin' || currentUser.role === 'QuanTriVien') ? 'Quản trị viên' : 'Thành viên'}
+                    </span>
+                  </div>
+                  <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Dropdown Menu tài khoản */}
+                {isUserMenuOpen && (
+                  <>
+                    {/* Backdrop ẩn để click ra ngoài đóng menu */}
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setIsUserMenuOpen(false)}
+                    />
+                    
+                    <div className="absolute right-0 top-12 z-50 w-64 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 animate-scaleIn text-slate-800">
+                      {/* Header thông tin người dùng trong dropdown */}
+                      <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-3">
+                        <img
+                          src={currentUser.avatar}
+                          alt={currentUser.name}
+                          className="w-10 h-10 rounded-full object-cover ring-2 ring-emerald-500/20"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-slate-900 truncate">{currentUser.name}</p>
+                          <p className="text-[11px] text-slate-400 truncate">{currentUser.email || 'Thành viên WhatToCook'}</p>
+                          <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold">
+                            {(currentUser.role === 'Admin' || currentUser.role === 'QuanTriVien') ? 'Quản trị viên hệ thống (Admin)' : 'Thành viên'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Các lựa chọn menu */}
+                      <div className="p-1 space-y-0.5">
+                        {/* Link sang trang Dashboard nếu là Quản trị viên (Admin) */}
+                        {(currentUser.role === 'Admin' || currentUser.role === 'QuanTriVien') && (
+                          <Link
+                            href="/Dashboard"
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-emerald-600 rounded-xl transition-colors"
+                          >
+                            <Settings className="w-4 h-4 text-slate-400" />
+                            <span>Trang Quản Trị (Dashboard)</span>
+                          </Link>
+                        )}
+
+                        {/* Mở danh sách món đã lưu */}
+                        <button
+                          onClick={() => {
+                            setIsUserMenuOpen(false);
+                            setIsSavedDrawerOpen(true);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-rose-600 rounded-xl transition-colors cursor-pointer text-left"
+                        >
+                          <Heart className="w-4 h-4 text-slate-400" />
+                          <span>Món ăn đã lưu ({savedRecipesList.length})</span>
+                        </button>
+
+                        {/* Nút Đăng xuất */}
+                        <button
+                          onClick={handleLogout}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer text-left border-t border-slate-100 mt-1"
+                        >
+                          <LogOut className="w-4 h-4 text-rose-500" />
+                          <span>Đăng xuất</span>
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             ) : (
+              /* Nút ĐĂNG NHẬP khi người dùng CHƯA ĐĂNG NHẬP */
               <button
                 onClick={() => setIsAuthModalOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-sm font-semibold rounded-full shadow-md shadow-orange-500/25 transition-all cursor-pointer"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 active:scale-95 text-white text-sm font-bold rounded-full shadow-md shadow-emerald-600/25 transition-all cursor-pointer"
+                title="Nhấn để đăng nhập hoặc tạo tài khoản"
               >
                 <LogIn className="w-4 h-4" />
                 <span>Đăng nhập</span>
@@ -594,18 +713,20 @@ export default function HomePage() {
           </button>
         </div>
 
-        <div className="flex flex-col gap-2 px-2.5 border-t border-slate-100 pt-4">
-          <Link
-            href="/Dashboard"
-            className="flex items-center gap-4 px-3 py-3 rounded-2xl text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors font-bold text-sm"
-            title="Quản Trị Hệ Thống"
-          >
-            <ShieldCheck className="w-5 h-5 shrink-0 text-emerald-600" />
-            <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity duration-300">
-              Quản Trị (Admin)
-            </span>
-          </Link>
-        </div>
+        {(currentUser?.role === 'Admin' || currentUser?.role === 'QuanTriVien') && (
+          <div className="flex flex-col gap-2 px-2.5 border-t border-slate-100 pt-4">
+            <Link
+              href="/Dashboard"
+              className="flex items-center gap-4 px-3 py-3 rounded-2xl text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors font-bold text-sm"
+              title="Quản Trị Hệ Thống"
+            >
+              <ShieldCheck className="w-5 h-5 shrink-0 text-emerald-600" />
+              <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity duration-300">
+                Quản Trị (Admin)
+              </span>
+            </Link>
+          </div>
+        )}
       </aside>
 
       {/* TOAST THÔNG BÁO SO SÁNH TỪ ĐỒNG NGHĨA */}
@@ -1132,29 +1253,6 @@ export default function HomePage() {
 
               </div>
 
-              {/* Banner Admin Dashboard */}
-              <div className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-3xl p-6 shadow-xl relative overflow-hidden">
-                <ShieldCheck className="w-16 h-16 text-white/10 absolute -right-2 -bottom-2" />
-                <div className="relative z-10 space-y-3">
-                  <span className="px-2 py-0.5 bg-white/20 backdrop-blur-md rounded-md text-[10px] font-bold uppercase tracking-wider">
-                    Quản Trị Hệ Thống
-                  </span>
-                  <h4 className="text-base font-bold leading-snug">
-                    Admin Dashboard & Quản Lý Món Ăn
-                  </h4>
-                  <p className="text-xs text-emerald-100 leading-relaxed">
-                    Trang quản trị: thêm sửa xóa công thức, danh mục, từ điển nguyên liệu và crawler Cookpad.
-                  </p>
-                  <Link
-                    href="/Dashboard"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-white text-emerald-800 hover:bg-emerald-50 text-xs font-bold rounded-xl transition-all shadow-md"
-                  >
-                    <span>Mở Admin Dashboard</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              </div>
-
             </div>
 
           </div>
@@ -1422,48 +1520,24 @@ export default function HomePage() {
       )}
 
       {/* ============================================================================================== */}
-      {/* MODAL ĐĂNG NHẬP / XÁC THỰC */}
+      {/* MODAL ĐĂNG NHẬP / ĐĂNG KÝ (AUTH MODAL 2 CỘT NGHỆ THUẬT) */}
       {/* ============================================================================================== */}
-      {isAuthModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 text-center space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-orange-100 text-orange-600 mx-auto flex items-center justify-center font-bold">
-              <User className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-black text-slate-900">Tài Khoản Người Dùng</h3>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Đăng nhập để lưu các công thức món ăn yêu thích và xem thực đơn gợi ý cá nhân hóa.
-            </p>
-            <div className="space-y-2 pt-2">
-              <button
-                onClick={() => {
-                  setCurrentUser({
-                    id: 2,
-                    name: 'Cao Văn Hột Xoàn (Admin)',
-                    email: 'xoan@whattocook.com',
-                    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
-                    role: 'QuanTriVien'
-                  });
-                  setIsAuthModalOpen(false);
-                }}
-                className="w-full py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl shadow-md transition-colors cursor-pointer"
-              >
-                Đăng nhập tài khoản Admin
-              </button>
-              <button
-                onClick={() => {
-                  setCurrentUser(null);
-                  setIsAuthModalOpen(false);
-                }}
-                className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
-              >
-                Đăng xuất
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={(user) => {
+          // Cập nhật state người dùng khi đăng nhập / đăng ký thành công
+          setCurrentUser({
+            id: user.MaNguoiDung,
+            name: user.TenDangNhap,
+            email: user.Email,
+            avatar: user.AnhDaiDien || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
+            role: user.TenVaiTro || 'NguoiDung'
+          });
+        }}
+      />
 
     </div>
   );
 }
+

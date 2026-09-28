@@ -58,30 +58,32 @@ class AuthController {
     }
 
     /**
-     * [POST] /api/auth/login - Đăng nhập tài khoản
+     * [POST] /api/auth/login - Đăng nhập tài khoản (hỗ trợ cả Email và Tên đăng nhập)
      */
     static async login(req, res, next) {
         try {
-            const { email, matKhau } = req.body;
+            // Nhận email hoặc tenDangNhap hoặc username từ client
+            const { email, tenDangNhap, username, taiKhoan, matKhau } = req.body;
+            const accountInput = (email || tenDangNhap || username || taiKhoan || '').trim();
 
-            if (!email || !matKhau) {
-                return sendError(res, 'Vui lòng nhập email và mật khẩu.', 400);
+            if (!accountInput || !matKhau) {
+                return sendError(res, 'Vui lòng nhập email / tên đăng nhập và mật khẩu.', 400);
             }
 
-            // Gọi Stored Procedure: sp_LayNguoiDungTheoEmail
+            // Gọi Stored Procedure: sp_LayNguoiDungTheoEmail (hỗ trợ kiểm tra cả Email hoặc Tên đăng nhập)
             const result = await executeProcedure('sp_LayNguoiDungTheoEmail', {
-                Email: email.toLowerCase().trim()
+                Email: accountInput.toLowerCase()
             });
 
             const user = result.recordset[0];
             if (!user) {
-                return sendError(res, 'Email hoặc mật khẩu không chính xác.', 401);
+                return sendError(res, 'Tài khoản (Email / Tên đăng nhập) hoặc mật khẩu không chính xác.', 401);
             }
 
             // So khớp mật khẩu với hash trong CSDL
             const isMatch = await comparePassword(matKhau, user.MatKhauMaHoa);
             if (!isMatch) {
-                return sendError(res, 'Email hoặc mật khẩu không chính xác.', 401);
+                return sendError(res, 'Tài khoản (Email / Tên đăng nhập) hoặc mật khẩu không chính xác.', 401);
             }
 
             // Tạo JWT Token

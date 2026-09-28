@@ -46,8 +46,8 @@ class FavoriteController {
             const page = parseInt(req.query.page, 10) || 1;
             const pageSize = parseInt(req.query.pageSize, 10) || 12;
 
-            let result;
-            if (req.user && req.user.TenVaiTro === 'QuanTriVien') {
+            const isAdm = req.user && (req.user.TenVaiTro === 'Admin' || req.user.TenVaiTro === 'QuanTriVien');
+            if (isAdm) {
                 // Quản trị viên xem toàn bộ danh sách lượt lưu trong hệ thống
                 result = await executeProcedure('sp_LayTatCaMonAnDaLuu', {
                     Page: page,

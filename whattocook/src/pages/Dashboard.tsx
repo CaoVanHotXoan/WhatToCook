@@ -444,7 +444,7 @@ export default function Dashboard() {
                           <Icon className={`w-4 h-4 transition-transform ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
                           <span>{item.label}</span>
                         </div>
-                        {item.badge && (
+                        {'badge' in item && item.badge && (
                           <span
                             className={`text-[10px] px-2 py-0.5 rounded-md font-mono font-medium ${
                               isActive
@@ -547,7 +547,7 @@ export default function Dashboard() {
                 </div>
                 <div className="hidden sm:block text-left">
                   <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Quản Trị Viên</p>
-                  <p className="text-[10px] text-slate-400">QuanTriVien</p>
+                  <p className="text-[10px] text-slate-400 font-semibold text-emerald-600">Admin</p>
                 </div>
               </div>
             </div>

@@ -11,10 +11,14 @@ SET QUOTED_IDENTIFIER ON;
 GO
 
 -- 0. DỮ LIỆU MẪU BAN ĐẦU CHO VAI TRÒ
-IF NOT EXISTS (SELECT 1 FROM VaiTro WHERE TenVaiTro = 'QuanTriVien')
+IF NOT EXISTS (SELECT 1 FROM VaiTro WHERE TenVaiTro = 'Admin' OR TenVaiTro = 'QuanTriVien')
 BEGIN
     INSERT INTO VaiTro (TenVaiTro, MoTa) VALUES 
-    ('QuanTriVien', N'Quản trị viên toàn quyền hệ thống'),
+    ('Admin', N'Quản trị viên toàn quyền hệ thống');
+END
+IF NOT EXISTS (SELECT 1 FROM VaiTro WHERE TenVaiTro = 'NguoiDung')
+BEGIN
+    INSERT INTO VaiTro (TenVaiTro, MoTa) VALUES 
     ('NguoiDung', N'Người dùng thành viên thông thường');
 END
 GO
@@ -57,17 +61,30 @@ BEGIN
     SET NOCOUNT ON;
     BEGIN TRY
         -- Kiểm tra email đã tồn tại chưa
-        IF EXISTS (SELECT 1 FROM NguoiDung WHERE Email = @Email)
+        IF EXISTS (SELECT 1 FROM NguoiDung WHERE LOWER(Email) = LOWER(@Email))
         BEGIN
             RAISERROR(N'Email đã được sử dụng bởi tài khoản khác.', 16, 1);
             RETURN;
         END
 
-        -- Lấy mã vai trò 'NguoiDung' mặc định
+        -- Kiểm tra tên đăng nhập đã tồn tại chưa
+        IF EXISTS (SELECT 1 FROM NguoiDung WHERE LOWER(TenDangNhap) = LOWER(@TenDangNhap))
+        BEGIN
+            RAISERROR(N'Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác.', 16, 1);
+            RETURN;
+        END
+
+        -- Lấy mã vai trò 'NguoiDung' mặc định (tự động tìm mã chính xác theo tên)
         DECLARE @MaVaiTroDefault INT;
-        SELECT @MaVaiTroDefault = MaVaiTro FROM VaiTro WHERE TenVaiTro = 'NguoiDung';
+        SELECT TOP 1 @MaVaiTroDefault = MaVaiTro FROM VaiTro WHERE TenVaiTro = 'NguoiDung';
+        
+        -- Nếu không thấy, lấy vai trò thành viên thông thường bất kỳ
         IF @MaVaiTroDefault IS NULL
-            SET @MaVaiTroDefault = 2;
+            SELECT TOP 1 @MaVaiTroDefault = MaVaiTro FROM VaiTro WHERE TenVaiTro NOT IN ('Admin', 'QuanTriVien');
+        
+        -- Nếu vẫn không thấy, lấy bất kỳ mã vai trò nào có trong bảng
+        IF @MaVaiTroDefault IS NULL
+            SELECT TOP 1 @MaVaiTroDefault = MaVaiTro FROM VaiTro ORDER BY MaVaiTro DESC;
 
         -- Thêm mới người dùng
         INSERT INTO NguoiDung (MaVaiTro, TenDangNhap, Email, MatKhauMaHoa, AnhDaiDien, TieuSu)
@@ -114,7 +131,7 @@ BEGIN
         v.TenVaiTro
     FROM NguoiDung u
     LEFT JOIN VaiTro v ON u.MaVaiTro = v.MaVaiTro
-    WHERE u.Email = @Email;
+    WHERE u.Email = @Email OR LOWER(u.TenDangNhap) = LOWER(@Email);
 END
 GO
 

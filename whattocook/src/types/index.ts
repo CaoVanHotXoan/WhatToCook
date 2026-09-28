@@ -100,6 +100,8 @@ export interface NguoiDung {
   Email: string;
   HoTen?: string;
   Avatar?: string;
+  AnhDaiDien?: string;
+  TieuSu?: string;
   MaVaiTro: number;
   TenVaiTro?: string;
   NgayTao?: string;

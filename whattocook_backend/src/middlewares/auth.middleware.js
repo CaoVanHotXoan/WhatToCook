@@ -24,7 +24,7 @@ const authenticateToken = (req, res, next) => {
                 MaNguoiDung: 1,
                 TenDangNhap: 'admin',
                 Email: 'admin@whattocook.com',
-                TenVaiTro: 'QuanTriVien'
+                TenVaiTro: 'Admin'
             };
             return next();
         }
@@ -48,7 +48,8 @@ const requireAdmin = (req, res, next) => {
         return sendError(res, 'Yêu cầu xác thực tài khoản.', 401);
     }
 
-    if (req.user.TenVaiTro !== 'QuanTriVien') {
+    const role = req.user.TenVaiTro;
+    if (role !== 'Admin' && role !== 'QuanTriVien') {
         return sendError(res, 'Bạn không có quyền quản trị để thực hiện hành động này.', 403);
     }
 

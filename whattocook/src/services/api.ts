@@ -307,3 +307,85 @@ export const adminApi = {
     return res.data;
   }
 };
+
+/**
+ * =========================================================================================
+ * AUTH API SERVICE - DÀNH CHO XÁC THỰC NGƯỜI DÙNG (ĐĂNG NHẬP / ĐĂNG KÝ / LẤY PROFILE)
+ * =========================================================================================
+ */
+export const authApi = {
+  /**
+   * Đăng nhập tài khoản bằng Email hoặc Tên đăng nhập (Username)
+   * @param credentials Thông tin đăng nhập gồm tài khoản và mật khẩu
+   */
+  login: async (credentials: {
+    email?: string;
+    tenDangNhap?: string;
+    username?: string;
+    taiKhoan?: string;
+    matKhau: string;
+  }): Promise<{ user: NguoiDung; token: string }> => {
+    const res = await request<{ user: NguoiDung; token: string }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials)
+    });
+    // Lưu token và thông tin user vào localStorage để duy trì trạng thái đăng nhập
+    if (typeof window !== 'undefined' && res.data) {
+      if (res.data.token) {
+        localStorage.setItem('whattocook_token', res.data.token);
+      }
+      if (res.data.user) {
+        localStorage.setItem('whattocook_user', JSON.stringify(res.data.user));
+      }
+    }
+    return res.data;
+  },
+
+  /**
+   * Đăng ký tài khoản người dùng mới
+   * @param userData Dữ liệu đăng ký gồm Tên đăng nhập, Email, Mật khẩu
+   */
+  register: async (userData: {
+    tenDangNhap: string;
+    email: string;
+    matKhau: string;
+    anhDaiDien?: string;
+    tieuSu?: string;
+  }): Promise<{ user: NguoiDung; token: string }> => {
+    const res = await request<{ user: NguoiDung; token: string }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(userData)
+    });
+    // Tự động lưu thông tin phiên sau khi đăng ký thành công
+    if (typeof window !== 'undefined' && res.data) {
+      if (res.data.token) {
+        localStorage.setItem('whattocook_token', res.data.token);
+      }
+      if (res.data.user) {
+        localStorage.setItem('whattocook_user', JSON.stringify(res.data.user));
+      }
+    }
+    return res.data;
+  },
+
+  /**
+   * Lấy thông tin tài khoản đang đăng nhập hiện tại từ JWT Token
+   */
+  getProfile: async (): Promise<NguoiDung> => {
+    const res = await request<NguoiDung>('/auth/me', {
+      method: 'GET'
+    });
+    return res.data;
+  },
+
+  /**
+   * Đăng xuất khỏi hệ thống và xóa sạch localStorage
+   */
+  logout: (): void => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('whattocook_token');
+      localStorage.removeItem('whattocook_user');
+    }
+  }
+};
+
